@@ -15,6 +15,7 @@ import (
 	"go/types"
 	"reflect"
 
+	"honnef.co/go/tools/config"
 	"honnef.co/go/tools/go/ir"
 
 	"golang.org/x/tools/go/analysis"
@@ -32,6 +33,7 @@ var Analyzer = &analysis.Analyzer{
 	Run:        run,
 	ResultType: reflect.TypeOf(new(IR)),
 	FactTypes:  []analysis.Fact{new(noReturn)},
+	Requires:   []*analysis.Analyzer{config.Analyzer},
 }
 
 // IR provides intermediate representation for all the
@@ -96,9 +98,19 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			addAnons(anon)
 		}
 	}
+
+	cfg := config.For(pass).Unreachables
 	for _, fn := range irpkg.Functions {
 		addAnons(fn)
 		if fn.NoReturn > 0 {
+			pass.ExportObjectFact(fn.Object(), &noReturn{fn.NoReturn})
+		}
+
+		if unwind, ok := cfg[fn.String()]; ok {
+			fn.NoReturn = ir.AlwaysExits
+			if unwind {
+				fn.NoReturn = ir.AlwaysUnwinds
+			}
 			pass.ExportObjectFact(fn.Object(), &noReturn{fn.NoReturn})
 		}
 	}

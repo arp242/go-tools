@@ -128,6 +128,11 @@ func (cfg Config) Merge(ocfg Config) Config {
 	if ocfg.HTTPStatusCodeWhitelist != nil {
 		cfg.HTTPStatusCodeWhitelist = mergeLists(cfg.HTTPStatusCodeWhitelist, ocfg.HTTPStatusCodeWhitelist)
 	}
+	if cfg.Unreachables != nil {
+		for k, v := range ocfg.Unreachables {
+			cfg.Unreachables[k] = v
+		}
+	}
 	return cfg
 }
 
@@ -139,10 +144,11 @@ type Config struct {
 	// obvious solution would be using map[string]interface{}, but
 	// that's obviously subpar.
 
-	Checks                  []string `toml:"checks"`
-	Initialisms             []string `toml:"initialisms"`
-	DotImportWhitelist      []string `toml:"dot_import_whitelist"`
-	HTTPStatusCodeWhitelist []string `toml:"http_status_code_whitelist"`
+	Checks                  []string        `toml:"checks"`
+	Initialisms             []string        `toml:"initialisms"`
+	DotImportWhitelist      []string        `toml:"dot_import_whitelist"`
+	HTTPStatusCodeWhitelist []string        `toml:"http_status_code_whitelist"`
+	Unreachables            map[string]bool `toml:"unreachables"`
 }
 
 func (c Config) String() string {
@@ -151,7 +157,8 @@ func (c Config) String() string {
 	fmt.Fprintf(buf, "Checks: %#v\n", c.Checks)
 	fmt.Fprintf(buf, "Initialisms: %#v\n", c.Initialisms)
 	fmt.Fprintf(buf, "DotImportWhitelist: %#v\n", c.DotImportWhitelist)
-	fmt.Fprintf(buf, "HTTPStatusCodeWhitelist: %#v", c.HTTPStatusCodeWhitelist)
+	fmt.Fprintf(buf, "HTTPStatusCodeWhitelist: %#v\n", c.HTTPStatusCodeWhitelist)
+	fmt.Fprintf(buf, "Unreachables: %#v", c.Unreachables)
 
 	return buf.String()
 }
@@ -179,6 +186,7 @@ var DefaultConfig = Config{
 		"github.com/mmcloughlin/avo/reg",
 	},
 	HTTPStatusCodeWhitelist: []string{"200", "400", "404", "500"},
+	Unreachables:            map[string]bool{},
 }
 
 const ConfigName = "staticcheck.conf"
@@ -261,6 +269,7 @@ func Load(dir string) (Config, error) {
 	conf.Initialisms = normalizeList(conf.Initialisms)
 	conf.DotImportWhitelist = normalizeList(conf.DotImportWhitelist)
 	conf.HTTPStatusCodeWhitelist = normalizeList(conf.HTTPStatusCodeWhitelist)
+	// TODO: for unreachables, too.
 
 	return conf, nil
 }
